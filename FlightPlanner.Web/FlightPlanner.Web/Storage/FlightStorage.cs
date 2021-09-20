@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using FlightPlanner.Web.Interface;
 using FlightPlanner.Web.Models;
@@ -78,42 +79,42 @@ namespace FlightPlanner.Web.Storage
         public static bool IsValidFlight(AddFlightRequest flightRequest)
         {
             //check for null and empty values
-            bool result = String.IsNullOrEmpty(flightRequest.ArrivalTime)
+            bool isNullOrEmpty = String.IsNullOrEmpty(flightRequest.ArrivalTime)
               || String.IsNullOrEmpty(flightRequest.DepartureTime)
               || String.IsNullOrEmpty(flightRequest.Carrier)
               || flightRequest.From == null
               || flightRequest.To == null;
 
-            if (result)
+            if (isNullOrEmpty)
                 return false;
 
-            result = String.IsNullOrEmpty(flightRequest.From.AirportCode)
+            isNullOrEmpty = String.IsNullOrEmpty(flightRequest.From.AirportCode)
             || String.IsNullOrEmpty(flightRequest.From.City)
             || String.IsNullOrEmpty(flightRequest.From.Country)
             || String.IsNullOrEmpty(flightRequest.To.AirportCode)
             || String.IsNullOrEmpty(flightRequest.To.City)
             || String.IsNullOrEmpty(flightRequest.To.Country);
 
-            if (result)
+            if (isNullOrEmpty)
                 return false;
 
             //check for equal to and from airports
             var airportFrom = flightRequest.From.AirportCode.Trim().ToUpper();
             var airportTo = flightRequest.To.AirportCode.Trim().ToUpper();
-            result = airportFrom == airportTo;
+            bool isSameAirport = airportFrom == airportTo;
 
-            if (result)
+            if (isSameAirport)
                 return false;
 
             //check for strange dates
             DateTime departureTime = Convert.ToDateTime(flightRequest.DepartureTime);
             DateTime arrivalTime = Convert.ToDateTime(flightRequest.ArrivalTime);
-            result = arrivalTime < departureTime || arrivalTime == departureTime;
+            bool isStrangeDate = arrivalTime < departureTime || arrivalTime == departureTime;
 
-            if (result)
+            if (isStrangeDate)
                 return false;
 
-            return !result;
+            return true;
         }
 
         public static void DeleteFlight(int id)
