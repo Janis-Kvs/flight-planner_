@@ -40,5 +40,10 @@ namespace FlightPlanner.Web.Storage
 
             return airport;
         }
+
+        public void ClearAirports()
+        {
+            _airports.Clear();
+        }
     }
 }

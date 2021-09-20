@@ -29,6 +29,11 @@ namespace FlightPlanner.Web.Storage
             _flights.Clear();
         }
 
+        public static void ClearAirports()
+        {
+            _airportStorage.ClearAirports();
+        }
+
         public static Flight PutFlight(AddFlightRequest flightRequest)
         {
             List<Airport> airports = new List<Airport>
