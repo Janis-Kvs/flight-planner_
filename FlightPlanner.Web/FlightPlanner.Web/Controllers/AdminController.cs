@@ -1,7 +1,10 @@
-﻿using FlightPlanner.Web.Models;
+﻿using System.Linq;
+using FlightPlanner.Web.DbContext;
+using FlightPlanner.Web.Models;
 using FlightPlanner.Web.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FlightPlanner.Web.Controllers
 {
@@ -11,12 +14,23 @@ namespace FlightPlanner.Web.Controllers
     public class AdminController : ControllerBase
     {
         static object _lockObj = new object();
+        private readonly FlightPlannerDbContext _context;
+
+        public AdminController(FlightPlannerDbContext context)
+        {
+            _context = context;
+        }
 
         [HttpGet]
         [Route("flights/{id:int}")]
         public IActionResult GetFlight(int id)
         {
-            var flight = FlightStorage.GetFlight(id);
+            //var flight = FlightStorage.GetFlight(id);
+            var flight = _context.Flights
+                .Include(a => a.To)
+                .Include(a => a.From)
+                .SingleOrDefault(f => f.Id == id);
+            
             if(flight == null) 
                 return NotFound();
 
@@ -33,10 +47,13 @@ namespace FlightPlanner.Web.Controllers
                 if (!FlightStorage.IsValidFlight(flightRequest))
                     return BadRequest();
 
-                if (FlightStorage.IsSameFlight(flightRequest))
+                if (FlightStorage.IsSameFlight(flightRequest, _context))
                     return Conflict();
 
-                Flight flight = FlightStorage.PutFlight(flightRequest);
+                Flight flight = FlightStorage.CreateFlight(flightRequest);
+                _context.Flights.Add(flight);
+                _context.SaveChanges();
+
                 return Created("", flight);
             }
         }
@@ -46,7 +63,7 @@ namespace FlightPlanner.Web.Controllers
         {
             lock (_lockObj)
             {
-                FlightStorage.DeleteFlight(id);
+                FlightStorage.DeleteFlight(id, _context);
             }
 
             return Ok();

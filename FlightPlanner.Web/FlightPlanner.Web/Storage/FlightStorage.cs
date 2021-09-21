@@ -1,55 +1,34 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
+using FlightPlanner.Web.DbContext;
 using FlightPlanner.Web.Interface;
 using FlightPlanner.Web.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace FlightPlanner.Web.Storage
 {
     public static class FlightStorage
     {
-        private static readonly List<Flight> _flights = new();
-
         private static readonly AirportStorage _airportStorage = new();
-        private static int _id;
 
-        public static Flight GetFlight(int id)
+        public static Flight GetFlight(int id, FlightPlannerDbContext context)
         {
-            return FindFlight(id);
+            return FindFlight(id, context);
         }
 
-        public static Flight FindFlight(int id)
+        public static Flight FindFlight(int id, FlightPlannerDbContext context)
         {
-            return _flights.SingleOrDefault(f => f.Id == id);
+            return context.Flights
+                .Include(a => a.To)
+                .Include(a => a.From)
+                .SingleOrDefault(f => f.Id == id);
         }
 
-        public static void ClearFlights()
+        public static Flight CreateFlight(AddFlightRequest flightRequest)
         {
-            _flights.Clear();
-        }
-
-        public static Flight PutFlight(AddFlightRequest flightRequest)
-        {
-            List<Airport> airports = new List<Airport>
-            {
-                flightRequest.From,
-                flightRequest.To
-            };
-
-            _airportStorage.PutAirports(airports);
-
-            Flight flight = CreateFlight(flightRequest);
-            _flights.Add(flight);
-
-            return flight;
-        }
-
-        private static Flight CreateFlight(AddFlightRequest flightRequest)
-        {
-            int id = _id++;
+            
             Flight flight = new Flight
             {
-                Id = id,
                 ArrivalTime = flightRequest.ArrivalTime,
                 Carrier = flightRequest.Carrier,
                 DepartureTime = flightRequest.DepartureTime,
@@ -60,17 +39,20 @@ namespace FlightPlanner.Web.Storage
             return flight;
         }
 
-        public static bool IsSameFlight(AddFlightRequest flightRequest)
+        public static bool IsSameFlight(AddFlightRequest flightRequest, FlightPlannerDbContext context)
         {
-            Flight result = _flights.FirstOrDefault(f => f.ArrivalTime == flightRequest.ArrivalTime 
-               && f.Carrier == flightRequest.Carrier
-               && f.DepartureTime == flightRequest.DepartureTime
-               && f.From.AirportCode == flightRequest.From.AirportCode
-               && f.From.City == flightRequest.From.City
-               && f.From.Country == flightRequest.From.Country
-               && f.To.AirportCode == flightRequest.To.AirportCode
-               && f.To.City == flightRequest.To.City
-               && f.To.Country == flightRequest.To.Country);
+            Flight result = context.Flights
+                .Include(a => a.To)
+                .Include(a => a.From)
+                .FirstOrDefault(f => f.ArrivalTime == flightRequest.ArrivalTime 
+                                     && f.Carrier == flightRequest.Carrier
+                                     && f.DepartureTime == flightRequest.DepartureTime
+                                     && f.From.AirportCode == flightRequest.From.AirportCode
+                                     && f.From.City == flightRequest.From.City
+                                     && f.From.Country == flightRequest.From.Country
+                                     && f.To.AirportCode == flightRequest.To.AirportCode
+                                     && f.To.City == flightRequest.To.City
+                                     && f.To.Country == flightRequest.To.Country);
 
             return result != null;
         }
@@ -116,20 +98,30 @@ namespace FlightPlanner.Web.Storage
             return !result;
         }
 
-        public static void DeleteFlight(int id)
+        public static void DeleteFlight(int id, FlightPlannerDbContext context)
         {
-            Flight deleteFlight = FindFlight(id);
-            _flights.Remove(deleteFlight);
+            Flight flight = FindFlight(id, context);
+            
+            if (flight != null)
+            {
+                context.Airports.Remove(flight.To);
+                context.Airports.Remove(flight.From);
+                context.Flights.Remove(flight);
+                context.SaveChanges();
+            }
         }
 
-        public static Airport[] FindAirportByPhrase(string airportPhrase)
+        public static Airport[] FindAirportByPhrase(string airportPhrase, FlightPlannerDbContext context)
         {
-            return _airportStorage.FindAirportByPhrase(airportPhrase);
+            return _airportStorage.FindAirportByPhrase(airportPhrase, context);
         }
 
-        public static IPageResult<Flight> SearchFlight(SearchFlightRequest searchFlightRequest)
+        public static IPageResult<Flight> SearchFlight(SearchFlightRequest searchFlightRequest, FlightPlannerDbContext context)
         {
-            Flight[] searchedFlights = _flights.Where(fl => 
+            Flight[] searchedFlights = context.Flights
+                .Include(a => a.To)
+                .Include(a => a.From)
+                .Where(fl => 
                 fl.From.AirportCode.ToUpper() == searchFlightRequest.From.Trim().ToUpper()
                 && fl.To.AirportCode.ToUpper() == searchFlightRequest.To.Trim().ToUpper()
                 && fl.DepartureTime.Substring(0,10) == searchFlightRequest.DepartureDate).ToArray();
