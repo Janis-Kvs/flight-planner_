@@ -25,7 +25,6 @@ namespace FlightPlanner.Web.Controllers
         [Route("flights/{id:int}")]
         public IActionResult GetFlight(int id)
         {
-            //var flight = FlightStorage.GetFlight(id);
             var flight = _context.Flights
                 .Include(a => a.To)
                 .Include(a => a.From)
@@ -41,7 +40,6 @@ namespace FlightPlanner.Web.Controllers
         [Route("flights")]
         public IActionResult PutFlight(AddFlightRequest flightRequest)
         {
-            
             lock (_lockObj)
             {
                 if (!FlightStorage.IsValidFlight(flightRequest))
