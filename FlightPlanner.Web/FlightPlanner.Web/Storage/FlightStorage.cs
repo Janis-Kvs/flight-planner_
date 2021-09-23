@@ -9,7 +9,7 @@ namespace FlightPlanner.Web.Storage
 {
     public static class FlightStorage
     {
-        private static readonly AirportStorage _airportStorage = new();
+        private static readonly AirportStorage AirportStorage = new();
 
         public static Flight GetFlight(int id, FlightPlannerDbContext context)
         {
@@ -60,42 +60,40 @@ namespace FlightPlanner.Web.Storage
         public static bool IsValidFlight(AddFlightRequest flightRequest)
         {
             //check for null and empty values
-            bool result = String.IsNullOrEmpty(flightRequest.ArrivalTime)
-              || String.IsNullOrEmpty(flightRequest.DepartureTime)
-              || String.IsNullOrEmpty(flightRequest.Carrier)
-              || flightRequest.From == null
-              || flightRequest.To == null;
-
-            if (result)
-                return false;
-
-            result = String.IsNullOrEmpty(flightRequest.From.AirportCode)
-            || String.IsNullOrEmpty(flightRequest.From.City)
-            || String.IsNullOrEmpty(flightRequest.From.Country)
-            || String.IsNullOrEmpty(flightRequest.To.AirportCode)
-            || String.IsNullOrEmpty(flightRequest.To.City)
-            || String.IsNullOrEmpty(flightRequest.To.Country);
-
-            if (result)
-                return false;
+            bool isNullorEmpty = String.IsNullOrEmpty(flightRequest.ArrivalTime)
+                                 || String.IsNullOrEmpty(flightRequest.DepartureTime)
+                                 || String.IsNullOrEmpty(flightRequest.Carrier)
+                                 || flightRequest.From == null
+                                 || flightRequest.To == null
+                                 || String.IsNullOrEmpty(flightRequest.From.AirportCode)
+                                 || String.IsNullOrEmpty(flightRequest.From.City)
+                                 || String.IsNullOrEmpty(flightRequest.From.Country)
+                                 || String.IsNullOrEmpty(flightRequest.To.AirportCode)
+                                 || String.IsNullOrEmpty(flightRequest.To.City)
+                                 || String.IsNullOrEmpty(flightRequest.To.Country);
 
             //check for equal to and from airports
-            var airportFrom = flightRequest.From.AirportCode.Trim().ToUpper();
-            var airportTo = flightRequest.To.AirportCode.Trim().ToUpper();
-            result = airportFrom == airportTo;
-
-            if (result)
-                return false;
+            bool isEqualAirport = false;
+            if (!isNullorEmpty)
+            {
+                string airportFrom = flightRequest.From.AirportCode.Trim().ToUpper();
+                string airportTo = flightRequest.To.AirportCode.Trim().ToUpper();
+                isEqualAirport = airportFrom == airportTo;
+            }
 
             //check for strange dates
-            DateTime departureTime = Convert.ToDateTime(flightRequest.DepartureTime);
-            DateTime arrivalTime = Convert.ToDateTime(flightRequest.ArrivalTime);
-            result = arrivalTime < departureTime || arrivalTime == departureTime;
-
-            if (result)
+            bool isStrangeDate = false;
+            if (!isNullorEmpty)
+            {
+                DateTime departureTime = Convert.ToDateTime(flightRequest.DepartureTime);
+                DateTime arrivalTime = Convert.ToDateTime(flightRequest.ArrivalTime);
+                isStrangeDate = arrivalTime < departureTime || arrivalTime == departureTime;
+            }
+            
+            if (isStrangeDate || isNullorEmpty || isEqualAirport)
                 return false;
 
-            return !result;
+            return true;
         }
 
         public static void DeleteFlight(int id, FlightPlannerDbContext context)
@@ -113,7 +111,7 @@ namespace FlightPlanner.Web.Storage
 
         public static Airport[] FindAirportByPhrase(string airportPhrase, FlightPlannerDbContext context)
         {
-            return _airportStorage.FindAirportByPhrase(airportPhrase, context);
+            return AirportStorage.FindAirportByPhrase(airportPhrase, context);
         }
 
         public static IPageResult<Flight> SearchFlight(SearchFlightRequest searchFlightRequest, FlightPlannerDbContext context)
